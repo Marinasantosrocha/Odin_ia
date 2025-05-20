@@ -1,0 +1,87 @@
+import { FC } from "react";
+import { useContext } from 'react';
+import { CustomizerContext } from "@/app/context/customizerContext";
+import Link from "next/link";
+import { styled } from "@mui/material";
+import config from "@/app/context/config";
+import Image from "next/image";
+
+const Logo = () => {
+  const { isCollapse, isSidebarHover, activeDir, activeMode } = useContext(CustomizerContext);
+  const TopbarHeight = config.topbarHeight
+
+  const LinkStyled = styled(Link)(() => ({
+    height: TopbarHeight,
+    width: isCollapse == 'mini-sidebar' && !isSidebarHover ? '40px' : '180px',
+    overflow: "hidden",
+    display: "block",
+  }));
+
+  if (activeDir === "ltr") {
+    return (
+      <LinkStyled href="/">
+        {activeMode === "dark" ? (
+          <Image
+            src="/images/logos/light-logo.svg"
+            alt="logo"
+            height={TopbarHeight}
+            width={174}
+            priority
+          />
+        ) : (
+          <Image
+            src={"/images/logos/light-logo.svg"}
+            alt="logo"
+            height={TopbarHeight}
+            width={174}
+            priority
+          />
+        )}
+      </LinkStyled>
+    );
+  }
+
+  return (
+    <LinkStyled href="/">
+      {activeMode === "dark" ? (
+        isCollapse == 'mini-sidebar' && !isSidebarHover ?
+          <Image
+            src="/images/logos/light-rtl-logo.svg"
+            alt="logo"
+            height={TopbarHeight}
+            width={174}
+            priority
+          />
+          :
+          <Image
+            src="/images/logos/light-rtl-logo.svg"
+            alt="logo"
+            height={TopbarHeight}
+            width={174}
+            priority
+          />
+      )
+        : (
+          isCollapse == "mini-sidebar" && !isSidebarHover ?
+            <Image
+              src="/images/logos/light-rtl-logo.svg"
+              alt="logo"
+              height={TopbarHeight}
+              width={174}
+              priority
+            />
+            :
+            <Image
+              src="/images/logos/light-rtl-logo.svg"
+              alt="logo"
+              height={TopbarHeight}
+              width={174}
+              priority
+            />
+
+        )}
+    </LinkStyled>
+  );
+};
+
+export default Logo;
