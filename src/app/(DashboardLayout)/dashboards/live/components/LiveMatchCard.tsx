@@ -23,6 +23,7 @@ import SportsIcon from '@mui/icons-material/Sports';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import SubdirectoryArrowRightIcon from '@mui/icons-material/SubdirectoryArrowRight';
 import H2HDisplay from './H2HDisplay';
+import OddsDisplay from './OddsDisplay';
 
 interface LiveMatchCardProps {
   match: {
@@ -95,6 +96,9 @@ const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, events, onFetchEve
   const [h2hData, setH2hData] = useState<any[] | null>(null);
   const [h2hLoading, setH2hLoading] = useState(false);
   const [h2hError, setH2hError] = useState<string | null>(null);
+  const [oddsData, setOddsData] = useState<any[] | null>(null);
+  const [oddsLoading, setOddsLoading] = useState(false);
+  const [oddsError, setOddsError] = useState<string | null>(null);
 
   const handleExpandClick = () => {
     if (!expanded) {
@@ -109,6 +113,11 @@ const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, events, onFetchEve
     // Buscar H2H quando a aba for selecionada
     if (newValue === 1 && !h2hData && !h2hLoading) {
       fetchH2HData();
+    }
+    
+    // Buscar odds quando a aba for selecionada
+    if (newValue === 2 && !oddsData && !oddsLoading) {
+      fetchOddsData();
     }
   };
 
@@ -135,6 +144,32 @@ const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, events, onFetchEve
       setH2hError('Erro ao carregar histórico de confrontos');
     } finally {
       setH2hLoading(false);
+    }
+  };
+
+  const fetchOddsData = async () => {
+    setOddsLoading(true);
+    setOddsError(null);
+    
+    try {
+      const response = await fetch(`/api/live/odds-api?fixture=${match.fixture.id}`);
+      
+      if (!response.ok) {
+        throw new Error(`Erro ao buscar odds: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        setOddsData(data.data);
+      } else {
+        setOddsError('Odds não disponíveis para esta partida');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar odds:', error);
+      setOddsError('Erro ao carregar odds da partida');
+    } finally {
+      setOddsLoading(false);
     }
   };
 
@@ -364,6 +399,10 @@ const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, events, onFetchEve
               label="H2H" 
               sx={{ minHeight: 48 }}
             />
+            <Tab 
+              label="Odds" 
+              sx={{ minHeight: 48 }}
+            />
           </Tabs>
           
           <CardContent>
@@ -446,6 +485,22 @@ const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, events, onFetchEve
                   h2hData={h2hData}
                   loading={h2hLoading}
                   error={h2hError}
+                  currentMatch={match}
+                />
+              </Box>
+            )}
+            
+            {/* Aba de Odds */}
+            {activeTab === 2 && (
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  Odds da Partida
+                </Typography>
+                
+                <OddsDisplay
+                  oddsData={oddsData}
+                  loading={oddsLoading}
+                  error={oddsError}
                   currentMatch={match}
                 />
               </Box>
