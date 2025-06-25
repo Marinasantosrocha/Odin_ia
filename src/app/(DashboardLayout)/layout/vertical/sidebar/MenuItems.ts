@@ -9,9 +9,9 @@ const Menuitems: NavGroup[] = [
 
   {
     id: uniqueId(),
-    title: "General",
+    title: "Ao Vivo",
     icon: "solar:screencast-2-linear",
-    href: "/",
+    href: "/dashboards/live",
   },
   {
     id: uniqueId(),

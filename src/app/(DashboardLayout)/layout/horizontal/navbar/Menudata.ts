@@ -9,7 +9,7 @@ const Menuitems = [
     children: [
       {
         id: uniqueId(),
-        title: "General",
+        title: "Live",
         icon: "solar:stop-circle-line-duotone",
         href: "/",
       },

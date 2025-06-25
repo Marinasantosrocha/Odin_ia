@@ -1,7 +1,7 @@
 import { query, QueryResult } from '@/lib/db';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-interface SeasonRow {
+interface Season {
   season_year: number;
 }
 
@@ -12,12 +12,11 @@ interface RouteParams {
 }
 
 export async function GET(
-  request: Request,
-  { params }: RouteParams
+  request: NextRequest,
+  context: { params: { leagueId: string } }
 ) {
   try {
-    const { leagueId } = params;
-    
+    const { leagueId } = await context.params;
     if (!leagueId) {
       return NextResponse.json(
         { error: 'ID da liga não fornecido' },
@@ -25,8 +24,11 @@ export async function GET(
       );
     }
 
-    const result = await query<SeasonRow>(
-      'SELECT DISTINCT season_year FROM team_seasons WHERE league_id = $1 ORDER BY season_year DESC',
+    const result: QueryResult<Season> = await query(
+      `SELECT DISTINCT season_year
+       FROM fixtures
+       WHERE league_id = $1
+       ORDER BY season_year DESC`,
       [leagueId]
     );
     

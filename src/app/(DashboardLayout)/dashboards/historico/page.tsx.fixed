@@ -13,9 +13,8 @@ import {
   Avatar,
   Chip,
   Collapse,
+  Divider,
 } from "@mui/material";
-import StandingsTooltip from "./components/StandingsTooltip";
-import FixtureDetails from "./components/FixtureDetails";
 import type { SelectChangeEvent } from "@mui/material/Select";
 import PageContainer from "@/app/components/container/PageContainer";
 import Breadcrumb from "@/app/(DashboardLayout)/layout/shared/breadcrumb/Breadcrumb";
@@ -42,9 +41,6 @@ interface Fixture {
   away_team_logo: string;
   goals_home: number | null;
   goals_away: number | null;
-  round_id: string;
-  round_name: string;
-  is_current_round: boolean;
 }
 
 // Configuração de navegação
@@ -61,7 +57,13 @@ export default function Historico() {
   const [selectedSeason, setSelectedSeason] = useState<string>("");
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [expandedFixture, setExpandedFixture] = useState<number | null>(null);
-  const [expandedRounds, setExpandedRounds] = useState<Record<string, boolean>>({});
+  const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
+  const [fixtureDetails, setFixtureDetails] = useState<{
+    player_name_main: string;
+    card_type: string;
+    time_elapsed: number;
+    team_id: number;
+  }[]>([]);
   const [loading, setLoading] = useState<{
     leagues: boolean;
     seasons: boolean;
@@ -149,51 +151,6 @@ export default function Historico() {
     fetchSeasons();
   }, [selectedLeague]);
 
-  // Função para agrupar partidas por rodada e garantir ordem crescente
-  const groupFixturesByRound = (fixtures: Fixture[]) => {
-    const groupedFixtures: Record<string, { roundName: string; fixtures: Fixture[]; isCurrent: boolean; roundNumber: number }> = {};
-    
-    fixtures.forEach(fixture => {
-      const roundId = fixture.round_id || 'unknown';
-      if (!groupedFixtures[roundId]) {
-        // Extrair o número da rodada para ordenação
-        let roundNumber = 0;
-        try {
-          // Tentar extrair um número do roundId ou do nome da rodada
-          const match = /\d+/.exec(roundId) || /\d+/.exec(fixture.round_name || '');
-          if (match) {
-            roundNumber = parseInt(match[0], 10);
-          }
-        } catch (e) {
-          console.log('Erro ao extrair número da rodada:', e);
-        }
-        
-        groupedFixtures[roundId] = {
-          roundName: fixture.round_name || `Rodada ${roundId}`,
-          fixtures: [],
-          isCurrent: fixture.is_current_round,
-          roundNumber: roundNumber
-        };
-      }
-      groupedFixtures[roundId].fixtures.push(fixture);
-    });
-    
-    return groupedFixtures;
-  };
-  
-  // Função para obter rodadas ordenadas
-  const getSortedRounds = (fixtures: Fixture[]) => {
-    const grouped = groupFixturesByRound(fixtures);
-    
-    // Converter para array e ordenar por número da rodada
-    return Object.entries(grouped)
-      .map(([roundId, data]) => ({
-        roundId,
-        ...data
-      }))
-      .sort((a, b) => a.roundNumber - b.roundNumber);
-  };
-
   // Efeito para buscar partidas quando liga e temporada são selecionadas
   useEffect(() => {
     const fetchFixtures = async () => {
@@ -237,30 +194,40 @@ export default function Historico() {
   // Handlers para os eventos de seleção
   const handleLeagueChange = (event: SelectChangeEvent<string>) => {
     setSelectedLeague(event.target.value);
-    // Resetar rodadas expandidas ao mudar de liga
-    setExpandedRounds({});
   };
   
   const handleSeasonChange = (event: SelectChangeEvent<string>) => {
     setSelectedSeason(event.target.value);
-    // Resetar rodadas expandidas ao mudar de temporada
-    setExpandedRounds({});
   };
 
-  const handleFixtureClick = (fixture: Fixture) => {
+  const handleFixtureClick = async (fixture: Fixture) => {
     if (expandedFixture === fixture.fixture_id) {
       setExpandedFixture(null);
-    } else {
-      setExpandedFixture(fixture.fixture_id);
+      setFixtureDetails([]);
+      return;
     }
-  };
-  
-  // Handler para expandir/retrair rodadas
-  const handleRoundClick = (roundId: string) => {
-    setExpandedRounds(prev => ({
-      ...prev,
-      [roundId]: !prev[roundId]
-    }));
+
+    setExpandedFixture(fixture.fixture_id);
+    setLoadingDetails(true);
+    setFixtureDetails([]);
+
+    try {
+      const response = await fetch(`/api/fixtures/${fixture.fixture_id}/details`);
+      
+      if (!response.ok) {
+        throw new Error(`Erro ao buscar detalhes: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (Array.isArray(data.data)) {
+        setFixtureDetails(data.data);
+      }
+      
+    } catch (error) {
+      console.error('Erro ao buscar detalhes:', error);
+    } finally {
+      setLoadingDetails(false);
+    }
   };
 
   return (
@@ -358,15 +325,9 @@ export default function Historico() {
           {/* Área de exibição das partidas */}
           {selectedLeague && selectedSeason && !error && (
             <Box sx={{ mt: 5 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h6">
-                  Partidas da temporada {selectedSeason}/{Number(selectedSeason) + 1}
-                </Typography>
-                <StandingsTooltip 
-                  leagueId={Number(selectedLeague)} 
-                  seasonYear={selectedSeason} 
-                />
-              </Box>
+              <Typography variant="h6" sx={{ mb: 3 }}>
+                Partidas da temporada {selectedSeason}/{Number(selectedSeason) + 1}
+              </Typography>
               
               {loading.fixtures ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
@@ -380,76 +341,20 @@ export default function Historico() {
                   </Typography>
                 </Paper>
               ) : (
-                <Stack spacing={1.5}>
-                  {/* Agrupar partidas por rodada em ordem crescente */}
-                  {getSortedRounds(fixtures).map((roundData) => (
-                    <Box key={roundData.roundId}>
-                      {/* Cabeçalho da rodada (clicável) */}
-                      <Paper
-                        elevation={0}
-                        sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'space-between',
-                          p: 1.5,
-                          mb: 1,
-                          borderRadius: 1,
-                          cursor: 'pointer',
-                          bgcolor: roundData.isCurrent ? 'rgba(25, 118, 210, 0.08)' : 'background.default',
-                          '&:hover': {
-                            bgcolor: 'action.hover'
-                          },
-                          transition: 'background-color 0.2s'
-                        }}
-                        onClick={() => handleRoundClick(roundData.roundId)}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Typography variant="h6" fontWeight="medium">
-                            {roundData.roundName}
-                          </Typography>
-                          {roundData.isCurrent && (
-                            <Chip 
-                              label="Rodada Atual" 
-                              color="primary" 
-                              size="small" 
-                              sx={{ ml: 2 }}
-                            />
-                          )}
-                        </Box>
-                        
-                        {/* Ícone de expansão */}
-                        <Box 
-                          sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center',
-                            transform: expandedRounds[roundData.roundId] ? 'rotate(180deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.3s'
-                          }}
-                        >
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M7 10L12 15L17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </Box>
-                      </Paper>
-                      
-                      {/* Partidas da rodada (retrátil) */}
-                      <Collapse in={expandedRounds[roundData.roundId] || false} timeout="auto">
-                        <Stack spacing={1} sx={{ mb: 1 }}>
-                          {roundData.fixtures.map((fixture) => (
-                            <Paper 
-                              key={fixture.fixture_id} 
-                              sx={{ 
-                                p: 1.5, 
-                                borderRadius: 1,
-                                cursor: 'pointer',
-                                bgcolor: expandedFixture === fixture.fixture_id ? 'action.hover' : 'background.paper',
-                                transition: 'background-color 0.3s ease',
-                                '&:hover': {
-                                  bgcolor: 'action.hover'
-                                }
-                              }}
-                              onClick={() => handleFixtureClick(fixture)}
-                            >
+                <Stack spacing={2}>
+                  {fixtures.map((fixture) => (
+                    <Paper 
+                      key={fixture.fixture_id} 
+                      sx={{ 
+                        p: 2, 
+                        borderRadius: 2,
+                        cursor: 'pointer',
+                        '&:hover': {
+                          bgcolor: 'action.hover'
+                        }
+                      }}
+                      onClick={() => handleFixtureClick(fixture)}
+                    >
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         {/* Time da casa */}
                         <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
@@ -519,17 +424,80 @@ export default function Historico() {
                       </Box>
                       
                       <Collapse in={expandedFixture === fixture.fixture_id} timeout="auto">
-                        <FixtureDetails 
-                          fixture={fixture} 
-                          open={expandedFixture === fixture.fixture_id}
-                          selectedLeagueId={selectedLeague ? parseInt(selectedLeague) : 0}
-                        />
+                        <Box sx={{ mt: 2, p: 2 }}>
+                          <Typography variant="h6" align="center" gutterBottom>
+                            {loadingDetails ? 'Carregando detalhes...' : 'Cartões'}
+                          </Typography>
+                          
+                          {!loadingDetails && fixtureDetails.length === 0 && (
+                            <Typography variant="body2" color="text.secondary" align="center">
+                              Nenhum cartão registrado nesta partida.
+                            </Typography>
+                          )}
+
+                          {!loadingDetails && fixtureDetails.length > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              {/* Cartões do Time da Casa */}
+                              <Box sx={{ flex: 1, pr: 1 }}>
+                                <Typography variant="subtitle2" align="center" gutterBottom>
+                                  {fixture.home_team_name}
+                                </Typography>
+                                <Stack spacing={1}>
+                                  {fixtureDetails
+                                    .filter(detail => detail.team_id === fixture.home_team_id)
+                                    .map((detail, index) => (
+                                      <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box
+                                          sx={{
+                                            width: 20,
+                                            height: 25,
+                                            bgcolor: detail.card_type === 'Red Card' ? '#ff0000' : '#ffeb3b',
+                                            borderRadius: 0.5,
+                                            border: '1px solid rgba(0, 0, 0, 0.2)'
+                                          }}
+                                        />
+                                        <Typography variant="body2">
+                                          {detail.player_name_main} - {detail.time_elapsed}'
+                                        </Typography>
+                                      </Box>
+                                    ))}
+                                </Stack>
+                              </Box>
+
+                              {/* Divisor */}
+                              <Divider orientation="vertical" flexItem />
+
+                              {/* Cartões do Time Visitante */}
+                              <Box sx={{ flex: 1, pl: 1 }}>
+                                <Typography variant="subtitle2" align="center" gutterBottom>
+                                  {fixture.away_team_name}
+                                </Typography>
+                                <Stack spacing={1}>
+                                  {fixtureDetails
+                                    .filter(detail => detail.team_id === fixture.away_team_id)
+                                    .map((detail, index) => (
+                                      <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box
+                                          sx={{
+                                            width: 20,
+                                            height: 25,
+                                            bgcolor: detail.card_type === 'Red Card' ? '#ff0000' : '#ffeb3b',
+                                            borderRadius: 0.5,
+                                            border: '1px solid rgba(0, 0, 0, 0.2)'
+                                          }}
+                                        />
+                                        <Typography variant="body2">
+                                          {detail.player_name_main} - {detail.time_elapsed}'
+                                        </Typography>
+                                      </Box>
+                                    ))}
+                                </Stack>
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
                       </Collapse>
-                          </Paper>
-                        ))}
-                        </Stack>
-                      </Collapse>
-                    </Box>
+                    </Paper>
                   ))}
                 </Stack>
               )}

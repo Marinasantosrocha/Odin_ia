@@ -14,14 +14,17 @@ interface Fixture {
   away_team_logo: string;
   goals_home: number | null;
   goals_away: number | null;
+  round_id: string;
+  round_name: string;
+  is_current_round: boolean;
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { leagueId: string; seasonYear: string } }
+  context: { params: { leagueId: string; seasonYear: string } }
 ) {
   try {
-    const { leagueId, seasonYear } = params;
+    const { leagueId, seasonYear } = await context.params;
 
     // Validar parâmetros
     if (!leagueId || !seasonYear) {
@@ -30,8 +33,8 @@ export async function GET(
         { status: 400 }
       );
     }
-
     // Consultar fixtures com JOIN para buscar os nomes e logos dos times
+    // Primeiro, vamos buscar as partidas sem a informação de rodada para garantir que funcione
     const result = await query<Fixture>(`
       SELECT 
         f.fixture_id, 
@@ -45,18 +48,25 @@ export async function GET(
         home.logo_url AS home_team_logo,
         away.logo_url AS away_team_logo,
         f.goals_home,
-        f.goals_away
+        f.goals_away,
+        f.round AS round_id,
+        COALESCE(fr.round_name, CONCAT('Rodada ', f.round)) AS round_name,
+        COALESCE(fr.is_current, false) AS is_current_round
       FROM 
         fixtures f
       JOIN 
         teams home ON f.home_team_id = home.team_id
       JOIN 
         teams away ON f.away_team_id = away.team_id
+      LEFT JOIN
+        fixture_rounds fr ON f.round = fr.round_id 
+        AND f.league_id = fr.league_id 
+        AND CAST(f.season_year AS VARCHAR) = fr.season
       WHERE 
         f.league_id = $1 AND 
         f.season_year = $2
       ORDER BY 
-        f.date DESC
+        f.round ASC, f.date ASC
     `, [leagueId, seasonYear]);
 
     if (!result.rows || result.rows.length === 0) {

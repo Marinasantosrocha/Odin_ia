@@ -13,6 +13,21 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Sistema de tratamento flexível para diferentes formatos de resposta de API
 
 ### Corrigido
+- **2025-05-20**: Corrigido formato do placar de ":" para "x" para melhorar a visualização
+- **2025-05-20**: Ajustado tamanho dos logos dos times para 30x30 pixels
+- **2025-05-20**: Removido bordas arredondadas dos logos para exibição em quadrados
+- **2025-05-20**: Alterada ordenação das partidas para mostrar as mais antigas primeiro
+- **2025-05-20**: Ajustado espaçamento e padding dos elementos para melhorar a legibilidade
+
+### Modificado
+- **2025-05-20**: Ajustada a estrutura visual das partidas para melhorar a apresentação dos logos
+- **2025-05-20**: Otimizado o layout para melhorar a experiência do usuário
+
+### Técnico
+- **2025-05-20**: Ajustado estilos do Material UI para melhorar a consistência visual
+- **2025-05-20**: Otimizado o uso de componentes Box e Avatar para melhorar a exibição dos logos
+
+### Corrigido
 - **2025-05-16**: Corrigida consulta SQL na rota `/api/leagues` para usar os nomes corretos das colunas (`country_name` e `country_code` em vez de `country` e `season`)
 - **2025-05-16**: Resolvido erro `leagues.map is not a function` implementando tratamento robusto de respostas da API
 - **2025-05-16**: Melhorado tratamento de erros em chamadas de API com feedback visual para o usuário
