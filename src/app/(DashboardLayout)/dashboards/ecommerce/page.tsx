@@ -6,7 +6,6 @@ import { Box, Grid } from "@mui/material";
 import PageContainer from "@/app/components/container/PageContainer";
 import Breadcrumb from "@/app/(DashboardLayout)/layout/shared/breadcrumb/Breadcrumb";
 
-import SalesOverview from "@/app/components/dashboards/general/TheSalesOverview";
 import WeatherCard from "@/app/components/dashboards/general/TheWeatherCard";
 
 import TheProductSales from "@/app/components/dashboards/ecommerce/TheProductSales";
@@ -50,12 +49,6 @@ const Ecommerce = () => {
               lg: 8
             }}>
             <Grid container spacing={3}>
-              <Grid size={12}>
-                <SalesCards isLoading={isLoading} />
-              </Grid>
-              <Grid size={12}>
-                <SalesOverview isLoading={isLoading} />
-              </Grid>
               <Grid
                 size={{
                   xs: 12,

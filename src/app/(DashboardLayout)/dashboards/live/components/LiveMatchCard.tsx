@@ -6,14 +6,15 @@ import {
   Typography,
   Avatar,
   Chip,
-  Grid,
   Divider,
   IconButton,
   Collapse,
   Stack,
   Paper,
   Badge,
-  Tooltip
+  Tooltip,
+  Tabs,
+  Tab
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -21,6 +22,7 @@ import SportsSoccerIcon from '@mui/icons-material/SportsSoccer';
 import SportsIcon from '@mui/icons-material/Sports';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import SubdirectoryArrowRightIcon from '@mui/icons-material/SubdirectoryArrowRight';
+import H2HDisplay from './H2HDisplay';
 
 interface LiveMatchCardProps {
   match: {
@@ -89,12 +91,51 @@ interface LiveMatchCardProps {
 
 const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, events, onFetchEvents }) => {
   const [expanded, setExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+  const [h2hData, setH2hData] = useState<any[] | null>(null);
+  const [h2hLoading, setH2hLoading] = useState(false);
+  const [h2hError, setH2hError] = useState<string | null>(null);
 
   const handleExpandClick = () => {
     if (!expanded) {
       onFetchEvents(match.fixture.id);
     }
     setExpanded(!expanded);
+  };
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+    
+    // Buscar H2H quando a aba for selecionada
+    if (newValue === 1 && !h2hData && !h2hLoading) {
+      fetchH2HData();
+    }
+  };
+
+  const fetchH2HData = async () => {
+    setH2hLoading(true);
+    setH2hError(null);
+    
+    try {
+      const response = await fetch(`/api/live/h2h-api?team1=${match.teams.home.id}&team2=${match.teams.away.id}`);
+      
+      if (!response.ok) {
+        throw new Error(`Erro ao buscar H2H: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        setH2hData(data.data);
+      } else {
+        setH2hError('Dados de H2H não disponíveis');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar H2H:', error);
+      setH2hError('Erro ao carregar histórico de confrontos');
+    } finally {
+      setH2hLoading(false);
+    }
   };
 
   // Função para determinar a cor do chip de status
@@ -305,73 +346,112 @@ const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, events, onFetchEve
         </Box>
       </CardContent>
 
-      {/* Conteúdo expandido com eventos */}
+      {/* Conteúdo expandido com abas */}
       <Collapse in={expanded} timeout="auto" unmountOnExit>
         <Divider />
-        <CardContent>
-          <Typography variant="subtitle2" gutterBottom>
-            Eventos da Partida
-          </Typography>
+        <Box sx={{ width: '100%' }}>
+          <Tabs 
+            value={activeTab} 
+            onChange={handleTabChange} 
+            centered
+            sx={{ borderBottom: 1, borderColor: 'divider' }}
+          >
+            <Tab 
+              label="Eventos" 
+              sx={{ minHeight: 48 }}
+            />
+            <Tab 
+              label="H2H" 
+              sx={{ minHeight: 48 }}
+            />
+          </Tabs>
           
-          {events && events.length > 0 ? (
-            <Stack spacing={1}>
-              {events.map((event, index) => (
-                <Paper 
-                  key={index} 
-                  elevation={0} 
-                  sx={{ 
-                    p: 1, 
-                    backgroundColor: 'background.default',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                >
-                  <Badge 
-                    badgeContent={`${event.time.elapsed}'${event.time.extra ? '+' + event.time.extra : ''}`} 
-                    color="primary"
-                    sx={{ mr: 1 }}
-                  >
-                    {renderEventIcon(event.type, event.detail)}
-                  </Badge>
-                  
-                  <Box sx={{ ml: 1 }}>
-                    <Typography variant="body2">
-                      <strong>{event.player.name}</strong> 
-                      {event.type === 'Goal' && ' ⚽ marcou um gol'}
-                      {event.type === 'Card' && event.detail === 'Yellow Card' && ' recebeu cartão amarelo'}
-                      {event.type === 'Card' && event.detail === 'Red Card' && ' recebeu cartão vermelho'}
-                      {event.type === 'subst' && ' substituído'}
-                    </Typography>
-                    
-                    {event.assist && event.assist.name && (
-                      <Typography variant="caption" color="text.secondary">
-                        Assistência: {event.assist.name}
-                      </Typography>
-                    )}
-                    
-                    {event.type === 'subst' && (
-                      <Typography variant="caption" color="text.secondary">
-                        Entrou: {event.assist?.name || 'Jogador não informado'}
-                      </Typography>
-                    )}
-                  </Box>
-                  
-                  <Box sx={{ ml: 'auto' }}>
-                    <Avatar 
-                      src={event.team.logo} 
-                      alt={event.team.name} 
-                      sx={{ width: 20, height: 20 }}
-                    />
-                  </Box>
-                </Paper>
-              ))}
-            </Stack>
-          ) : (
-            <Typography variant="body2" color="text.secondary" textAlign="center">
-              Nenhum evento registrado para esta partida.
-            </Typography>
-          )}
-        </CardContent>
+          <CardContent>
+            {/* Aba de Eventos */}
+            {activeTab === 0 && (
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  Eventos da Partida
+                </Typography>
+                
+                {events && events.length > 0 ? (
+                  <Stack spacing={1}>
+                    {events.map((event, index) => (
+                      <Paper 
+                        key={index} 
+                        elevation={0} 
+                        sx={{ 
+                          p: 1, 
+                          backgroundColor: 'background.default',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <Badge 
+                          badgeContent={`${event.time.elapsed}'${event.time.extra ? '+' + event.time.extra : ''}`} 
+                          color="primary"
+                          sx={{ mr: 1 }}
+                        >
+                          {renderEventIcon(event.type, event.detail)}
+                        </Badge>
+                        
+                        <Box sx={{ ml: 1 }}>
+                          <Typography variant="body2">
+                            <strong>{event.player.name}</strong> 
+                            {event.type === 'Goal' && ' ⚽ marcou um gol'}
+                            {event.type === 'Card' && event.detail === 'Yellow Card' && ' recebeu cartão amarelo'}
+                            {event.type === 'Card' && event.detail === 'Red Card' && ' recebeu cartão vermelho'}
+                            {event.type === 'subst' && ' substituído'}
+                          </Typography>
+                          
+                          {event.assist && event.assist.name && (
+                            <Typography variant="caption" color="text.secondary">
+                              Assistência: {event.assist.name}
+                            </Typography>
+                          )}
+                          
+                          {event.type === 'subst' && (
+                            <Typography variant="caption" color="text.secondary">
+                              Entrou: {event.assist?.name || 'Jogador não informado'}
+                            </Typography>
+                          )}
+                        </Box>
+                        
+                        <Box sx={{ ml: 'auto' }}>
+                          <Avatar 
+                            src={event.team.logo} 
+                            alt={event.team.name} 
+                            sx={{ width: 20, height: 20 }}
+                          />
+                        </Box>
+                      </Paper>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary" textAlign="center">
+                    Nenhum evento registrado para esta partida.
+                  </Typography>
+                )}
+              </Box>
+            )}
+            
+            {/* Aba de H2H */}
+            {activeTab === 1 && (
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  Histórico de Confrontos
+                </Typography>
+                
+                <H2HDisplay
+                  h2hData={h2hData}
+                  loading={h2hLoading}
+                  error={h2hError}
+                  currentMatch={match}
+                />
+              </Box>
+            )}
+          </CardContent>
+        </Box>
       </Collapse>
     </Card>
   );

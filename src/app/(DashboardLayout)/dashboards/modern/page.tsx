@@ -8,8 +8,6 @@ import Breadcrumb from "@/app/(DashboardLayout)/layout/shared/breadcrumb/Breadcr
 
 // components
 import ActivityTimeline from "@/app/components/dashboards/general/TheActivityTimeline";
-import BandwidthUsage from "@/app/components/dashboards/general/TheBandwidthUsage";
-import DownloadCount from "@/app/components/dashboards/general/TheDownloadCount";
 
 import TheProgressCards from "@/app/components/dashboards/modern/TheProgressCards";
 import TheSalesAmplePixel from "@/app/components/dashboards/modern/TheSalesAmplePixel";
@@ -63,16 +61,7 @@ export default function Dashboard() {
               xs: 12,
               lg: 5
             }}>
-            <Grid container spacing={3}>
-              {/* column */}
-              <Grid size={12}>
-                <BandwidthUsage isLoading={isLoading} />
-              </Grid>
-              {/* column */}
-              <Grid size={12}>
-                <DownloadCount isLoading={isLoading} />
-              </Grid>
-            </Grid>
+            <TheNotification />
           </Grid>
           <Grid
             size={{

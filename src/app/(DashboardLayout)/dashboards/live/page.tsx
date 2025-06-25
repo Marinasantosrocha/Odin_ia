@@ -42,6 +42,7 @@ export default function Live() {
   const [error, setError] = useState<string>("");
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
 
   // Buscar ligas ao carregar o componente
   useEffect(() => {
@@ -80,6 +81,11 @@ export default function Live() {
     fetchLeagues();
   }, []);
 
+  // Marcar como montado no cliente para evitar erro de hidratação
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // Manipulador de mudança de liga
   const handleLeagueChange = (event: SelectChangeEvent) => {
     setSelectedLeague(event.target.value);
@@ -88,6 +94,9 @@ export default function Live() {
 
   // Função para formatar a data da última atualização
   const formatLastUpdate = () => {
+    if (!isMounted) {
+      return '--:--:--';
+    }
     return lastUpdate.toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',

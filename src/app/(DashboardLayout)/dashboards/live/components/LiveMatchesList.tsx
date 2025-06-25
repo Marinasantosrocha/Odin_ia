@@ -182,7 +182,7 @@ const LiveMatchesList: React.FC<LiveMatchesListProps> = ({ selectedLeague }) => 
   // Função para buscar eventos de uma partida específica
   const fetchEvents = async (fixtureId: number) => {
     try {
-      const response = await fetch(`/api/live/events?fixture=${fixtureId}`);
+      const response = await fetch(`/api/live/events-api?fixture=${fixtureId}`);
       
       if (!response.ok) {
         throw new Error(`Erro ao buscar eventos: ${response.status}`);
@@ -190,7 +190,7 @@ const LiveMatchesList: React.FC<LiveMatchesListProps> = ({ selectedLeague }) => 
       
       const data = await response.json();
       
-      if (data.data && Array.isArray(data.data)) {
+      if (data.success && data.data && Array.isArray(data.data)) {
         setEventsMap(prev => ({
           ...prev,
           [fixtureId]: data.data

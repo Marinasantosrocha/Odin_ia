@@ -8,12 +8,8 @@ import Breadcrumb from '@/app/(DashboardLayout)/layout/shared/breadcrumb/Breadcr
 
 // components
 
-import NewsletterCampaign from "@/app/components/dashboards/general/TheNewsletterCampaign";
-import BandwidthUsage from "@/app/components/dashboards/general/TheBandwidthUsage";
-import DownloadCount from "@/app/components/dashboards/general/TheDownloadCount";
 import ProfileCard from "@/app/components/dashboards/general/TheProfileCard";
 import BlogCard from "@/app/components/dashboards/general/TheBlogCard";
-import OurVisitors from "@/app/components/dashboards/general/TheOurVisitors";
 
 import TopCards from "@/app/components/dashboards/classic/TheTopCards";
 import CurrentVisits from "@/app/components/dashboards/classic/TheCurrentVisits";
@@ -53,29 +49,6 @@ export default function Classic() {
               xs: 12,
               lg: 4
             }}>
-            <Grid container spacing={3}>
-              <Grid size={12}>
-                <BandwidthUsage isLoading={isLoading} />
-              </Grid>
-              <Grid size={12}>
-                <DownloadCount isLoading={isLoading} />
-              </Grid>
-            </Grid>
-          </Grid>
-
-          <Grid
-            size={{
-              xs: 12,
-              lg: 4
-            }}>
-            <OurVisitors isLoading={isLoading} />
-          </Grid>
-
-          <Grid
-            size={{
-              xs: 12,
-              lg: 4
-            }}>
             <CurrentVisits />
           </Grid>
 
@@ -86,14 +59,6 @@ export default function Classic() {
             }}>
             <BlogCard />
           </Grid>
-          <Grid
-            size={{
-              xs: 12,
-              lg: 8
-            }}>
-            <NewsletterCampaign isLoading={isLoading} />
-          </Grid>
-
           <Grid
             size={{
               xs: 12,

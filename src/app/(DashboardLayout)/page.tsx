@@ -7,13 +7,6 @@ import PageContainer from "@/app/components/container/PageContainer";
 import Breadcrumb from "@/app/(DashboardLayout)/layout/shared/breadcrumb/Breadcrumb";
 
 // components
-import Welcome from "@/app/(DashboardLayout)/layout/shared/welcome/Welcome";
-
-import SalesOverview from "@/app/components/dashboards/general/TheSalesOverview";
-import OurVisitors from "@/app/components/dashboards/general/TheOurVisitors";
-import NewsletterCampaign from "@/app/components/dashboards/general/TheNewsletterCampaign";
-import BandwidthUsage from "@/app/components/dashboards/general/TheBandwidthUsage";
-import DownloadCount from "@/app/components/dashboards/general/TheDownloadCount";
 import WeatherCard from "@/app/components/dashboards/general/TheWeatherCard";
 import ProfileCard from "@/app/components/dashboards/general/TheProfileCard";
 import ActivityTimeline from "@/app/components/dashboards/general/TheActivityTimeline";
@@ -45,46 +38,9 @@ export default function Dashboard() {
           <Grid
             size={{
               xs: 12,
-              lg: 8
-            }}>
-            <SalesOverview isLoading={isLoading} />
-          </Grid>
-          <Grid
-            size={{
-              xs: 12,
-              lg: 4
-            }}>
-            <OurVisitors isLoading={isLoading} />
-          </Grid>
-
-          <Grid
-            size={{
-              xs: 12,
               lg: 4
             }}>
             <BlogCard />
-          </Grid>
-          <Grid
-            size={{
-              xs: 12,
-              lg: 8
-            }}>
-            <NewsletterCampaign isLoading={isLoading} />
-          </Grid>
-
-          <Grid
-            size={{
-              xs: 12,
-              lg: 4
-            }}>
-            <BandwidthUsage isLoading={isLoading} />
-          </Grid>
-          <Grid
-            size={{
-              xs: 12,
-              lg: 4
-            }}>
-            <DownloadCount isLoading={isLoading} />
           </Grid>
           <Grid
             size={{
@@ -116,7 +72,6 @@ export default function Dashboard() {
             <ActivityTimeline />
           </Grid>
         </Grid>
-        <Welcome />
       </Box>
     </PageContainer>)
   );

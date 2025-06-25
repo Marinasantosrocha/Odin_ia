@@ -8,14 +8,10 @@ import Breadcrumb from "@/app/(DashboardLayout)/layout/shared/breadcrumb/Breadcr
 
 // components
 
-import NewsletterCampaign from "@/app/components/dashboards/general/TheNewsletterCampaign";
-import BandwidthUsage from "@/app/components/dashboards/general/TheBandwidthUsage";
-import DownloadCount from "@/app/components/dashboards/general/TheDownloadCount";
 import ProfileCard from "@/app/components/dashboards/general/TheProfileCard";
 import CurrentVisits from "@/app/components/dashboards/classic/TheCurrentVisits";
 import ProjectsData from "@/app/components/dashboards/classic/TheProjectsData";
 import MyContacts from "@/app/components/dashboards/analytical/TheMyContacts";
-import OurVisitors from "@/app/components/dashboards/general/TheOurVisitors";
 
 import TheOnlineRevenue from "@/app/components/dashboards/analytical/TheOnlineRevenue";
 import TheExpance from "@/app/components/dashboards/analytical/TheExpance";
@@ -100,13 +96,6 @@ export default function Analytical() {
               xs: 12,
               lg: 8
             }}>
-            <NewsletterCampaign isLoading={isLoading} />
-          </Grid>
-          <Grid
-            size={{
-              xs: 12,
-              lg: 4
-            }}>
             <MyContacts />
           </Grid>
           <Grid
@@ -122,27 +111,6 @@ export default function Analytical() {
               lg: 8
             }}>
             <ProjectsData />
-          </Grid>
-          <Grid
-            size={{
-              xs: 12,
-              lg: 4
-            }}>
-            <OurVisitors isLoading={isLoading} />
-          </Grid>
-          <Grid
-            size={{
-              xs: 12,
-              lg: 4
-            }}>
-            <Grid container spacing={3}>
-              <Grid size={12}>
-                <BandwidthUsage isLoading={isLoading} />
-              </Grid>
-              <Grid size={12}>
-                <DownloadCount isLoading={isLoading} />
-              </Grid>
-            </Grid>
           </Grid>
           <Grid
             size={{
