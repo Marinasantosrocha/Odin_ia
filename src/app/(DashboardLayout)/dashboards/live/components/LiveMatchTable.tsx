@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -21,6 +21,7 @@ import {
   KeyboardArrowUp
 } from '@mui/icons-material';
 import LiveMatchCard from './LiveMatchCard';
+import LastGamesDisplay from './LastGamesDisplay';
 
 interface LiveMatchTableProps {
   matches: Array<{
@@ -72,6 +73,82 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
   onFetchEvents 
 }) => {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [standingsData, setStandingsData] = useState<{ [key: string]: any[] }>({});
+  const [loadingStandings, setLoadingStandings] = useState<Set<string>>(new Set());
+  const [failedStandings, setFailedStandings] = useState<Set<string>>(new Set()); // Cache para ligas sem dados
+
+  // Função para buscar classificação de uma liga
+  const fetchStandings = useCallback(async (leagueId: number, season: string = new Date().getFullYear().toString()) => {
+    const cacheKey = `${leagueId}-${season}`;
+    
+    // Verificar se já está carregando, já foi carregado, ou já falhou
+    if (loadingStandings.has(cacheKey) || standingsData[cacheKey] || failedStandings.has(cacheKey)) {
+      return;
+    }
+
+    // Marcar como carregando
+    setLoadingStandings(prev => new Set(prev).add(cacheKey));
+
+    try {
+      const response = await fetch(`/api/live/standings-api?league=${leagueId}&season=${season}`);
+      
+      if (!response.ok) {
+        // Se retornou 404, marcar como falha para não tentar novamente
+        if (response.status === 404) {
+          setFailedStandings(prev => new Set(prev).add(cacheKey));
+          console.log(`Liga ${leagueId} (temporada ${season}) - classificação não disponível`);
+          return; // Retornar silenciosamente para 404
+        }
+        throw new Error(`Erro ao buscar classificação: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        setStandingsData(prev => ({
+          ...prev,
+          [cacheKey]: data.data
+        }));
+      } else {
+        // Marcar como falha se não há dados válidos
+        setFailedStandings(prev => new Set(prev).add(cacheKey));
+        console.log(`Liga ${leagueId} (temporada ${season}) - dados de classificação inválidos`);
+      }
+    } catch (error) {
+      // Só logar erro se não for 404 (que já foi tratado acima)
+      if (error instanceof Error && !error.message.includes('404')) {
+        console.error('Erro ao buscar classificação:', error);
+      }
+      // Não marcar como falha para outros tipos de erro (timeout, rede, etc.)
+    } finally {
+      // Remover do loading
+      setLoadingStandings(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(cacheKey);
+        return newSet;
+      });
+    }
+  }, [loadingStandings, standingsData, failedStandings]);
+
+  // Função para obter dados do time na classificação
+  const getTeamStandingData = useCallback((teamId: number, leagueId: number, season: string = new Date().getFullYear().toString()) => {
+    const cacheKey = `${leagueId}-${season}`;
+    
+    // Se já falhou anteriormente, não tentar novamente
+    if (failedStandings.has(cacheKey)) {
+      return null;
+    }
+    
+    const leagueStandings = standingsData[cacheKey];
+    
+    if (!leagueStandings) {
+      // Iniciar carregamento se ainda não foi feito
+      fetchStandings(leagueId, season);
+      return null;
+    }
+
+    return leagueStandings.find((team: any) => team.teamId === teamId);
+  }, [failedStandings, standingsData, fetchStandings]);
 
   const handleRowToggle = (fixtureId: number) => {
     const newExpandedRows = new Set(expandedRows);
@@ -180,6 +257,15 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
     }
   };
 
+  // Pré-calcular dados de classificação para evitar chamadas repetidas durante o render
+  const matchesWithStandingsData = useMemo(() => {
+    return matches.map(match => ({
+      match,
+      homeTeamStanding: getTeamStandingData(match.teams.home.id, match.league.id),
+      awayTeamStanding: getTeamStandingData(match.teams.away.id, match.league.id)
+    }));
+  }, [matches, getTeamStandingData]);
+
   if (!matches || matches.length === 0) {
     return (
       <Paper sx={{ p: 3, textAlign: 'center' }}>
@@ -218,6 +304,11 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
                 Placar
               </Typography>
             </TableCell>
+            <TableCell width="120px" align="center">
+              <Typography variant="subtitle2" fontWeight="bold">
+                Últimos Jogos
+              </Typography>
+            </TableCell>
             <TableCell width="80px" align="center">
               <Typography variant="subtitle2" fontWeight="bold">
                 Ações
@@ -226,7 +317,9 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
           </TableRow>
         </TableHead>
         <TableBody>
-          {matches.map((match) => (
+          {matchesWithStandingsData.map((matchData) => {
+            const { match, homeTeamStanding, awayTeamStanding } = matchData;
+            return (
             <React.Fragment key={match.fixture.id}>
               {/* Linha principal da partida */}
               <TableRow hover sx={{ '& > *': { borderBottom: 'unset' } }}>
@@ -312,6 +405,22 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
                   </Box>
                 </TableCell>
 
+                {/* Coluna Últimos Jogos */}
+                <TableCell align="center">
+                  <LastGamesDisplay
+                    homeTeam={{
+                      id: match.teams.home.id,
+                      name: match.teams.home.name,
+                      form: homeTeamStanding?.form
+                    }}
+                    awayTeam={{
+                      id: match.teams.away.id,
+                      name: match.teams.away.name,
+                      form: awayTeamStanding?.form
+                    }}
+                  />
+                </TableCell>
+
                 {/* Coluna Ações */}
                 <TableCell align="center">
                   <IconButton
@@ -329,7 +438,7 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
 
               {/* Linha expandida com detalhes */}
               <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={5}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
                   <Collapse 
                     in={expandedRows.has(match.fixture.id)} 
                     timeout="auto" 
@@ -346,7 +455,8 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
                 </TableCell>
               </TableRow>
             </React.Fragment>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
     </TableContainer>
