@@ -78,6 +78,12 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
   const [loadingStandings, setLoadingStandings] = useState<Set<string>>(new Set());
   const [failedStandings, setFailedStandings] = useState<Set<string>>(new Set()); // Cache para ligas sem dados
   const [standingsTimestamps, setStandingsTimestamps] = useState<{ [key: string]: number }>({}); // Cache de timestamps
+  
+  // Estados para odds
+  const [oddsData, setOddsData] = useState<{ [key: number]: any }>({});
+  const [loadingOdds, setLoadingOdds] = useState<Set<number>>(new Set());
+  const [failedOdds, setFailedOdds] = useState<Set<number>>(new Set());
+  const [oddsTimestamps, setOddsTimestamps] = useState<{ [key: number]: number }>({});
 
   // Constantes de cache
   const FRONTEND_CACHE_DURATION = 10 * 60 * 1000; // 10 minutos no frontend
@@ -151,7 +157,78 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
         return newSet;
       });
     }
-  }, [loadingStandings, standingsData, failedStandings]);
+  }, [loadingStandings, standingsData, failedStandings, standingsTimestamps]);
+
+  // Função para buscar odds de uma partida
+  const fetchOdds = useCallback(async (fixtureId: number) => {
+    const now = Date.now();
+    
+    // Verificar se já está carregando
+    if (loadingOdds.has(fixtureId)) {
+      return;
+    }
+
+    // Verificar se já falhou recentemente
+    if (failedOdds.has(fixtureId)) {
+      return;
+    }
+
+    // Verificar cache válido
+    const timestamp = oddsTimestamps[fixtureId];
+    if (timestamp && (now - timestamp) < FRONTEND_CACHE_DURATION && oddsData[fixtureId]) {
+      return;
+    }
+
+    setLoadingOdds(prev => new Set(prev).add(fixtureId));
+
+    try {
+      const response = await fetch(`/api/live/odds-api?fixture=${fixtureId}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.data && data.data.length > 0) {
+        setOddsData(prev => ({
+          ...prev,
+          [fixtureId]: data.data[0] // Pegar primeiro resultado
+        }));
+        setOddsTimestamps(prev => ({
+          ...prev,
+          [fixtureId]: now
+        }));
+      } else {
+        // Adicionar ao cache de falhas se não há dados
+        setFailedOdds(prev => new Set(prev).add(fixtureId));
+        setTimeout(() => {
+          setFailedOdds(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(fixtureId);
+            return newSet;
+          });
+        }, FAILED_CACHE_DURATION);
+      }
+    } catch (error) {
+      console.error(`Erro ao buscar odds para fixture ${fixtureId}:`, error);
+      // Adicionar ao cache de falhas
+      setFailedOdds(prev => new Set(prev).add(fixtureId));
+      setTimeout(() => {
+        setFailedOdds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(fixtureId);
+          return newSet;
+        });
+      }, FAILED_CACHE_DURATION);
+    } finally {
+      setLoadingOdds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(fixtureId);
+        return newSet;
+      });
+    }
+  }, [loadingOdds, oddsData, failedOdds, oddsTimestamps]);
 
   // Função para obter dados do time na classificação
   const getTeamStandingData = useCallback((teamId: number, leagueId: number, season: string = new Date().getFullYear().toString()) => {
@@ -172,6 +249,76 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
 
     return leagueStandings.find((team: any) => team.teamId === teamId);
   }, [failedStandings, standingsData, fetchStandings]);
+
+  // Função para obter as melhores odds de uma partida
+  const getBestOdds = useCallback((fixtureId: number) => {
+    // Se já falhou anteriormente, não tentar novamente
+    if (failedOdds.has(fixtureId)) {
+      return null;
+    }
+    
+    const matchOdds = oddsData[fixtureId];
+    
+    if (!matchOdds) {
+      // Iniciar carregamento se ainda não foi feito
+      fetchOdds(fixtureId);
+      return null;
+    }
+
+    // Extrair melhores odds do mercado "Match Winner" (1X2)
+    const bestOdds: { 
+      home: number | null, 
+      draw: number | null, 
+      away: number | null,
+      homeBookie: string | null,
+      drawBookie: string | null,
+      awayBookie: string | null,
+      allBookies: string[]
+    } = { 
+      home: null, 
+      draw: null, 
+      away: null, 
+      homeBookie: null, 
+      drawBookie: null, 
+      awayBookie: null,
+      allBookies: []
+    };
+    
+    if (matchOdds.bookmakers && matchOdds.bookmakers.length > 0) {
+      // Coletar todas as casas de apostas
+      const bookieNames = matchOdds.bookmakers.map((bookie: any) => bookie.bookmaker?.name).filter(Boolean);
+      bestOdds.allBookies = Array.from(new Set(bookieNames)); // Remove duplicatas
+      
+      matchOdds.bookmakers.forEach((bookmaker: any) => {
+        if (bookmaker.bets) {
+          bookmaker.bets.forEach((bet: any) => {
+            if (bet.name === 'Match Winner' && bet.values) {
+              bet.values.forEach((value: any) => {
+                const odd = parseFloat(value.odd);
+                if (!isNaN(odd)) {
+                  // Verificar diferentes formatos de valores
+                  if ((value.value === 'Home' || value.value === '1') && (bestOdds.home === null || odd > bestOdds.home)) {
+                    bestOdds.home = odd;
+                    bestOdds.homeBookie = bookmaker.bookmaker?.name;
+                  }
+                  if ((value.value === 'Draw' || value.value === 'X') && (bestOdds.draw === null || odd > bestOdds.draw)) {
+                    bestOdds.draw = odd;
+                    bestOdds.drawBookie = bookmaker.bookmaker?.name;
+                  }
+                  if ((value.value === 'Away' || value.value === '2') && (bestOdds.away === null || odd > bestOdds.away)) {
+                    bestOdds.away = odd;
+                    bestOdds.awayBookie = bookmaker.bookmaker?.name;
+                  }
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+
+    return bestOdds;
+  }, [failedOdds, oddsData, fetchOdds]);
 
   const handleRowToggle = (fixtureId: number) => {
     const newExpandedRows = new Set(expandedRows);
@@ -306,7 +453,7 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
         mt: 2
       }}
     >
-      <Table sx={{ minWidth: 800 }}>
+      <Table sx={{ minWidth: 1200 }}>
         <TableHead sx={{
           position: 'sticky',
           top: 0,
@@ -346,6 +493,27 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
               <Typography variant="subtitle2" fontWeight="bold">
                 Últimos Jogos
               </Typography>
+            </TableCell>
+            <TableCell width="60px" align="center">
+              <Tooltip title="Vitória do time da casa">
+                <Typography variant="subtitle2" fontWeight="bold">
+                  1
+                </Typography>
+              </Tooltip>
+            </TableCell>
+            <TableCell width="60px" align="center">
+              <Tooltip title="Empate">
+                <Typography variant="subtitle2" fontWeight="bold">
+                  X
+                </Typography>
+              </Tooltip>
+            </TableCell>
+            <TableCell width="60px" align="center">
+              <Tooltip title="Vitória do time visitante">
+                <Typography variant="subtitle2" fontWeight="bold">
+                  2
+                </Typography>
+              </Tooltip>
             </TableCell>
             <TableCell width="80px" align="center">
               <Typography variant="subtitle2" fontWeight="bold">
@@ -482,6 +650,101 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
                   />
                 </TableCell>
 
+                {/* Colunas de Odds */}
+                {(() => {
+                  const bestOdds = getBestOdds(match.fixture.id);
+                  return (
+                    <>
+                      {/* Coluna Odd Casa (1) */}
+                      <TableCell align="center">
+                        <Box sx={{ textAlign: 'center' }}>
+                          <Typography 
+                            variant="body2" 
+                            fontWeight="medium"
+                            sx={{ 
+                              color: (bestOdds && typeof bestOdds.home === 'number') ? 'primary.main' : 'text.secondary',
+                              fontSize: '0.875rem',
+                              lineHeight: 1.2
+                            }}
+                          >
+                            {(bestOdds && typeof bestOdds.home === 'number') ? bestOdds.home.toFixed(2) : '-'}
+                          </Typography>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              fontSize: '0.65rem',
+                              color: 'text.secondary',
+                              display: 'block',
+                              lineHeight: 1,
+                              mt: 0.2
+                            }}
+                          >
+                            {bestOdds?.homeBookie || 'N/A'}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+
+                      {/* Coluna Odd Empate (X) */}
+                      <TableCell align="center">
+                        <Box sx={{ textAlign: 'center' }}>
+                          <Typography 
+                            variant="body2" 
+                            fontWeight="medium"
+                            sx={{ 
+                              color: (bestOdds && typeof bestOdds.draw === 'number') ? 'warning.main' : 'text.secondary',
+                              fontSize: '0.875rem',
+                              lineHeight: 1.2
+                            }}
+                          >
+                            {(bestOdds && typeof bestOdds.draw === 'number') ? bestOdds.draw.toFixed(2) : '-'}
+                          </Typography>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              fontSize: '0.65rem',
+                              color: 'text.secondary',
+                              display: 'block',
+                              lineHeight: 1,
+                              mt: 0.2
+                            }}
+                          >
+                            {bestOdds?.drawBookie || 'N/A'}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+
+                      {/* Coluna Odd Visitante (2) */}
+                      <TableCell align="center">
+                        <Box sx={{ textAlign: 'center' }}>
+                          <Typography 
+                            variant="body2" 
+                            fontWeight="medium"
+                            sx={{ 
+                              color: (bestOdds && typeof bestOdds.away === 'number') ? 'success.main' : 'text.secondary',
+                              fontSize: '0.875rem',
+                              lineHeight: 1.2
+                            }}
+                          >
+                            {(bestOdds && typeof bestOdds.away === 'number') ? bestOdds.away.toFixed(2) : '-'}
+                          </Typography>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              fontSize: '0.65rem',
+                              color: 'text.secondary',
+                              display: 'block',
+                              lineHeight: 1,
+                              mt: 0.2
+                            }}
+                          >
+                            {bestOdds?.awayBookie || 'N/A'}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                    </>
+                  );
+                })()}
+
                 {/* Coluna Ações */}
                 <TableCell align="center">
                   <IconButton
@@ -499,7 +762,7 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
 
               {/* Linha expandida com detalhes */}
               <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
                   <Collapse 
                     in={expandedRows.has(match.fixture.id)} 
                     timeout="auto" 
