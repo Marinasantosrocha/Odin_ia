@@ -8,7 +8,6 @@ import {
   Select,
   MenuItem,
   CircularProgress,
-  Grid,
   Paper,
   Alert,
   IconButton,
@@ -165,29 +164,27 @@ export default function Live() {
             </Box>
           </Box>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr 1fr' }, gap: 3 }}>
-            <Box>
-              <FormControl fullWidth size="small">
-                <InputLabel id="league-select-label">Liga</InputLabel>
-                <Select
-                  labelId="league-select-label"
-                  id="league-select"
-                  value={selectedLeague}
-                  label="Liga"
-                  onChange={handleLeagueChange}
-                  disabled={loading}
-                >
-                  <MenuItem value="">
-                    <em>Todas as ligas</em>
+          <Box sx={{ mb: 3 }}>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel id="league-select-label">Liga</InputLabel>
+              <Select
+                labelId="league-select-label"
+                id="league-select"
+                value={selectedLeague}
+                label="Liga"
+                onChange={handleLeagueChange}
+                disabled={loading}
+              >
+                <MenuItem value="">
+                  <em>Todas as ligas</em>
+                </MenuItem>
+                {leagues.map((league) => (
+                  <MenuItem key={league.league_id} value={league.league_id.toString()}>
+                    {league.name}
                   </MenuItem>
-                  {leagues.map((league) => (
-                    <MenuItem key={league.league_id} value={league.league_id.toString()}>
-                      {league.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
 
           <Box mt={3}>
