@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LiveMatchCard from './LiveMatchCard';
+import LiveMatchTable from './LiveMatchTable';
 
 interface LiveFixture {
   fixture: {
@@ -312,16 +313,11 @@ const LiveMatchesList: React.FC<LiveMatchesListProps> = ({ selectedLeague }) => 
             </Box>
           </AccordionSummary>
           <AccordionDetails>
-            <Box>
-              {matches.map((match) => (
-                <LiveMatchCard 
-                  key={match.fixture.id} 
-                  match={match} 
-                  events={eventsMap[match.fixture.id]} 
-                  onFetchEvents={fetchEvents}
-                />
-              ))}
-            </Box>
+            <LiveMatchTable
+              matches={matches}
+              matchEvents={eventsMap}
+              onFetchEvents={fetchEvents}
+            />
           </AccordionDetails>
         </Accordion>
       ))}
