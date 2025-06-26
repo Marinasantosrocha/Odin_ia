@@ -76,14 +76,31 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
   const [standingsData, setStandingsData] = useState<{ [key: string]: any[] }>({});
   const [loadingStandings, setLoadingStandings] = useState<Set<string>>(new Set());
   const [failedStandings, setFailedStandings] = useState<Set<string>>(new Set()); // Cache para ligas sem dados
+  const [standingsTimestamps, setStandingsTimestamps] = useState<{ [key: string]: number }>({}); // Cache de timestamps
+
+  // Constantes de cache
+  const FRONTEND_CACHE_DURATION = 10 * 60 * 1000; // 10 minutos no frontend
+  const FAILED_CACHE_DURATION = 30 * 60 * 1000; // 30 minutos para falhas no frontend
 
   // Função para buscar classificação de uma liga
   const fetchStandings = useCallback(async (leagueId: number, season: string = new Date().getFullYear().toString()) => {
     const cacheKey = `${leagueId}-${season}`;
+    const now = Date.now();
     
-    // Verificar se já está carregando, já foi carregado, ou já falhou
-    if (loadingStandings.has(cacheKey) || standingsData[cacheKey] || failedStandings.has(cacheKey)) {
+    // Verificar se já está carregando
+    if (loadingStandings.has(cacheKey)) {
       return;
+    }
+
+    // Verificar se já falhou recentemente
+    if (failedStandings.has(cacheKey)) {
+      return;
+    }
+
+    // Verificar se já temos dados válidos e não expiraram
+    const lastFetch = standingsTimestamps[cacheKey];
+    if (standingsData[cacheKey] && lastFetch && (now - lastFetch) < FRONTEND_CACHE_DURATION) {
+      return; // Dados ainda válidos, não fazer nova requisição
     }
 
     // Marcar como carregando
@@ -108,6 +125,11 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
         setStandingsData(prev => ({
           ...prev,
           [cacheKey]: data.data
+        }));
+        // Salvar timestamp do cache
+        setStandingsTimestamps(prev => ({
+          ...prev,
+          [cacheKey]: now
         }));
       } else {
         // Marcar como falha se não há dados válidos
@@ -366,6 +388,11 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
                       />
                       <Typography variant="body2" fontWeight="medium">
                         {match.teams.home.name}
+                        {homeTeamStanding?.position && (
+                          <Typography component="span" variant="caption" sx={{ color: 'grey.500', ml: 0.5 }}>
+                            ({homeTeamStanding.position}º)
+                          </Typography>
+                        )}
                       </Typography>
                     </Box>
                     {/* Time Visitante */}
@@ -376,6 +403,11 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
                       />
                       <Typography variant="body2" fontWeight="medium">
                         {match.teams.away.name}
+                        {awayTeamStanding?.position && (
+                          <Typography component="span" variant="caption" sx={{ color: 'grey.500', ml: 0.5 }}>
+                            ({awayTeamStanding.position}º)
+                          </Typography>
+                        )}
                       </Typography>
                     </Box>
                   </Box>

@@ -4,11 +4,33 @@ import { NextRequest, NextResponse } from 'next/server';
 const standingsCache = new Map<string, { data: any; timestamp: number }>();
 // Cache para respostas negativas (404) - evita requisições repetidas
 const failedStandingsCache = new Map<string, number>();
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos
-const FAILED_CACHE_DURATION = 60 * 60 * 1000; // 1 hora para falhas
+const CACHE_DURATION = 4 * 60 * 60 * 1000; // 4 horas para dados válidos (classificação não muda frequentemente)
+const FAILED_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 horas para falhas (ligas sem dados provavelmente não terão dados em breve)
+
+// Função para limpar cache expirado (executada a cada requisição)
+function cleanExpiredCache() {
+  const now = Date.now();
+  
+  // Limpar cache de dados válidos expirados
+  standingsCache.forEach((value, key) => {
+    if (now - value.timestamp > CACHE_DURATION) {
+      standingsCache.delete(key);
+    }
+  });
+  
+  // Limpar cache de falhas expiradas
+  failedStandingsCache.forEach((timestamp, key) => {
+    if (now - timestamp > FAILED_CACHE_DURATION) {
+      failedStandingsCache.delete(key);
+    }
+  });
+}
 
 export async function GET(request: NextRequest) {
   try {
+    // Limpar cache expirado
+    cleanExpiredCache();
+    
     const { searchParams } = new URL(request.url);
     const leagueId = searchParams.get('league');
     const season = searchParams.get('season') || new Date().getFullYear().toString();
