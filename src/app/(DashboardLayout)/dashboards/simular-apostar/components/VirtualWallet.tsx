@@ -21,6 +21,8 @@ interface Bet {
   result?: 'win' | 'loss';
   profit?: number;
   date: Date;
+  followedPrediction?: boolean;
+  predictionConfidence?: number;
 }
 
 interface WalletStats {
@@ -35,6 +37,8 @@ interface VirtualWalletProps {
   stats: WalletStats;
   recentBets: Bet[];
   onResetWallet: () => void;
+  predictionBasedBets?: number;
+  predictionBasedWins?: number;
 }
 
 const VirtualWallet: React.FC<VirtualWalletProps> = ({
@@ -42,6 +46,8 @@ const VirtualWallet: React.FC<VirtualWalletProps> = ({
   stats,
   recentBets,
   onResetWallet,
+  predictionBasedBets = 0,
+  predictionBasedWins = 0,
 }) => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -94,7 +100,7 @@ const VirtualWallet: React.FC<VirtualWalletProps> = ({
         {/* Estatísticas */}
         <Box sx={{ 
           display: 'grid', 
-          gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, 
+          gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(6, 1fr)' }, 
           gap: 2,
           minWidth: 0
         }}>
@@ -135,6 +141,24 @@ const VirtualWallet: React.FC<VirtualWalletProps> = ({
             </Typography>
             <Typography variant="caption" color="text.secondary" noWrap>
               Taxa
+            </Typography>
+          </Box>
+
+          <Box sx={{ textAlign: 'center', display: { xs: 'none', sm: 'block' } }}>
+            <Typography variant="h6" fontWeight="bold" color="info.main">
+              {predictionBasedBets}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" noWrap>
+              c/ Predição
+            </Typography>
+          </Box>
+
+          <Box sx={{ textAlign: 'center', display: { xs: 'none', sm: 'block' } }}>
+            <Typography variant="h6" fontWeight="bold" color="success.main">
+              {predictionBasedBets > 0 ? ((predictionBasedWins / predictionBasedBets) * 100).toFixed(0) : 0}%
+            </Typography>
+            <Typography variant="caption" color="text.secondary" noWrap>
+              Pred. Taxa
             </Typography>
           </Box>
         </Box>
@@ -198,9 +222,10 @@ const VirtualWallet: React.FC<VirtualWalletProps> = ({
                   minWidth: 120,
                   p: 1,
                   border: '1px solid',
-                  borderColor: 'divider',
+                  borderColor: bet.followedPrediction ? 'info.main' : 'divider',
                   borderRadius: 1,
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  bgcolor: bet.followedPrediction ? 'info.light' : 'background.paper'
                 }}
               >
                 <Typography 
@@ -209,10 +234,16 @@ const VirtualWallet: React.FC<VirtualWalletProps> = ({
                   color={bet.result === 'win' ? 'success.main' : 'error.main'}
                 >
                   {formatCurrency(bet.profit || 0)}
+                  {bet.followedPrediction && ' ⭐'}
                 </Typography>
                 <Typography variant="caption" display="block" color="text.secondary" noWrap>
                   {bet.betOption}
                 </Typography>
+                {bet.followedPrediction && bet.predictionConfidence && (
+                  <Typography variant="caption" display="block" color="info.main" fontSize="0.6rem">
+                    {(bet.predictionConfidence * 100).toFixed(0)}% conf.
+                  </Typography>
+                )}
               </Box>
             ))}
           </Box>

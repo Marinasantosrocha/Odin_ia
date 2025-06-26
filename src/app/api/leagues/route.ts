@@ -17,12 +17,13 @@ export async function GET() {
     
     if (!result.rows || result.rows.length === 0) {
       return NextResponse.json(
-        { data: [], message: 'Nenhuma liga encontrada' },
+        { success: true, data: [], message: 'Nenhuma liga encontrada' },
         { status: 200 }
       );
     }
     
     return NextResponse.json({
+      success: true,
       data: result.rows,
       count: result.rows.length
     });
@@ -31,6 +32,7 @@ export async function GET() {
     console.error('Erro ao buscar ligas:', error);
     return NextResponse.json(
       { 
+        success: false,
         error: 'Erro ao buscar ligas',
         details: error instanceof Error ? error.message : 'Erro desconhecido'
       },
