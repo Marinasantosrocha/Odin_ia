@@ -21,9 +21,9 @@ const Menuitems: NavGroup[] = [
   },
   {
     id: uniqueId(),
-    title: "Analytical",
+    title: "Simular Apostar",
     icon: "solar:box-minimalistic-linear",
-    href: "/dashboards/analytical",
+    href: "/dashboards/simular-apostar",
   },
   {
     id: uniqueId(),

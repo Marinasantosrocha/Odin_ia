@@ -21,9 +21,9 @@ const Menuitems = [
       },
       {
         id: uniqueId(),
-        title: "Analytical",
+        title: "Simular Apostar",
         icon: "solar:stop-circle-line-duotone",
-        href: "/dashboards/analytical",
+        href: "/dashboards/simular-apostar",
       },
       {
         id: uniqueId(),
