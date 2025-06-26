@@ -22,6 +22,7 @@ import {
 } from '@mui/icons-material';
 import LiveMatchCard from './LiveMatchCard';
 import LastGamesDisplay from './LastGamesDisplay';
+import H2HTooltip from './H2HTooltip';
 
 interface LiveMatchTableProps {
   matches: Array<{
@@ -299,10 +300,25 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
   }
 
   return (
-    <TableContainer component={Paper} sx={{ mt: 2 }}>
+    <TableContainer 
+      component={Paper} 
+      sx={{ 
+        mt: 2
+      }}
+    >
       <Table sx={{ minWidth: 800 }}>
-        <TableHead>
-          <TableRow sx={{ backgroundColor: 'grey.50' }}>
+        <TableHead sx={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          backgroundColor: 'background.paper'
+        }}>
+          <TableRow sx={{ 
+            '& .MuiTableCell-head': {
+              backgroundColor: 'grey.50',
+              borderBottom: '2px solid rgba(224, 224, 224, 1)'
+            }
+          }}>
             <TableCell width="120px" align="center">
               <Box display="flex" alignItems="center" justifyContent="center" gap={1}>
                 <AccessTime fontSize="small" />
@@ -379,38 +395,51 @@ const LiveMatchTable: React.FC<LiveMatchTableProps> = ({
 
                 {/* Coluna Equipes */}
                 <TableCell>
-                  <Box>
-                    {/* Time da Casa */}
-                    <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-                      <Avatar 
-                        src={match.teams.home.logo} 
-                        sx={{ width: 20, height: 20 }}
-                      />
-                      <Typography variant="body2" fontWeight="medium">
-                        {match.teams.home.name}
-                        {homeTeamStanding?.position && (
-                          <Typography component="span" variant="caption" sx={{ color: 'grey.500', ml: 0.5 }}>
-                            ({homeTeamStanding.position}º)
-                          </Typography>
-                        )}
-                      </Typography>
+                  <H2HTooltip
+                    homeTeam={{
+                      id: match.teams.home.id,
+                      name: match.teams.home.name,
+                      logo: match.teams.home.logo
+                    }}
+                    awayTeam={{
+                      id: match.teams.away.id,
+                      name: match.teams.away.name,
+                      logo: match.teams.away.logo
+                    }}
+                  >
+                    <Box sx={{ cursor: 'pointer' }}>
+                      {/* Time da Casa */}
+                      <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                        <Avatar 
+                          src={match.teams.home.logo} 
+                          sx={{ width: 20, height: 20 }}
+                        />
+                        <Typography variant="body2" fontWeight="medium">
+                          {match.teams.home.name}
+                          {homeTeamStanding?.position && (
+                            <Typography component="span" variant="caption" sx={{ color: 'grey.500', ml: 0.5 }}>
+                              ({homeTeamStanding.position}º)
+                            </Typography>
+                          )}
+                        </Typography>
+                      </Box>
+                      {/* Time Visitante */}
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Avatar 
+                          src={match.teams.away.logo} 
+                          sx={{ width: 20, height: 20 }}
+                        />
+                        <Typography variant="body2" fontWeight="medium">
+                          {match.teams.away.name}
+                          {awayTeamStanding?.position && (
+                            <Typography component="span" variant="caption" sx={{ color: 'grey.500', ml: 0.5 }}>
+                              ({awayTeamStanding.position}º)
+                            </Typography>
+                          )}
+                        </Typography>
+                      </Box>
                     </Box>
-                    {/* Time Visitante */}
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Avatar 
-                        src={match.teams.away.logo} 
-                        sx={{ width: 20, height: 20 }}
-                      />
-                      <Typography variant="body2" fontWeight="medium">
-                        {match.teams.away.name}
-                        {awayTeamStanding?.position && (
-                          <Typography component="span" variant="caption" sx={{ color: 'grey.500', ml: 0.5 }}>
-                            ({awayTeamStanding.position}º)
-                          </Typography>
-                        )}
-                      </Typography>
-                    </Box>
-                  </Box>
+                  </H2HTooltip>
                 </TableCell>
 
                 {/* Coluna Placar */}

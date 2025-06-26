@@ -1,19 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Typography,
-  Divider,
   CircularProgress,
   Alert,
-  Paper,
-  Avatar,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Badge
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import LiveMatchCard from './LiveMatchCard';
 import LiveMatchTable from './LiveMatchTable';
 
 interface LiveFixture {
@@ -117,7 +108,6 @@ const LiveMatchesList: React.FC<LiveMatchesListProps> = ({ selectedLeague }) => 
   const [eventsMap, setEventsMap] = useState<Record<number, FixtureEvent[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedLeagues, setExpandedLeagues] = useState<Record<number, boolean>>({});
 
   // Função para buscar partidas ao vivo
   const fetchLiveMatches = async () => {
@@ -140,35 +130,6 @@ const LiveMatchesList: React.FC<LiveMatchesListProps> = ({ selectedLeague }) => 
       
       if (data.data && Array.isArray(data.data)) {
         setLiveMatches(data.data);
-        
-        // Inicializa o estado de expansão para cada liga
-        try {
-          // Garante que todos os itens em data.data são do tipo LiveFixture
-          const validMatches = data.data.filter((match: any) => 
-            match && match.league && typeof match.league.id === 'number'
-          );
-          
-          // Extrai os IDs de liga únicos de forma segura
-          const leagueIds: number[] = [];
-          validMatches.forEach((match: any) => {
-            if (match && match.league && typeof match.league.id === 'number' && !leagueIds.includes(match.league.id)) {
-              leagueIds.push(match.league.id);
-            }
-          });
-          
-          // Cria o objeto de estado inicial
-          const initialExpandedState: Record<number, boolean> = {};
-          leagueIds.forEach(id => {
-            initialExpandedState[id] = true;
-          });
-          
-          // Atualiza o estado
-          setExpandedLeagues(initialExpandedState);
-        } catch (err) {
-          console.error("Erro ao processar dados das ligas:", err);
-          // Em caso de erro, define um objeto vazio
-          setExpandedLeagues({});
-        }
       } else {
         setLiveMatches([]);
       }
@@ -215,44 +176,6 @@ const LiveMatchesList: React.FC<LiveMatchesListProps> = ({ selectedLeague }) => 
     return () => clearInterval(intervalId);
   }, [selectedLeague]);
 
-  // Função para agrupar partidas por liga
-  const groupMatchesByLeague = (matches: LiveFixture[]) => {
-    try {
-      const grouped: Record<number, { league: LiveFixture['league'], matches: LiveFixture[] }> = {};
-      
-      // Filtra partidas inválidas
-      const validMatches = matches.filter(match => 
-        match && match.league && typeof match.league.id === 'number'
-      );
-      
-      validMatches.forEach(match => {
-        const leagueId = match.league.id;
-        
-        if (!grouped[leagueId]) {
-          grouped[leagueId] = {
-            league: match.league,
-            matches: []
-          };
-        }
-        
-        grouped[leagueId].matches.push(match);
-      });
-      
-      return Object.values(grouped);
-    } catch (error) {
-      console.error("Erro ao agrupar partidas por liga:", error);
-      return []; // Retorna array vazio em caso de erro
-    }
-  };
-
-  // Função para alternar a expansão de uma liga
-  const toggleLeagueExpansion = (leagueId: number) => {
-    setExpandedLeagues(prev => ({
-      ...prev,
-      [leagueId]: !prev[leagueId]
-    }));
-  };
-
   // Renderizar o conteúdo com base no estado de carregamento e erro
   if (loading && liveMatches.length === 0) {
     return (
@@ -278,8 +201,6 @@ const LiveMatchesList: React.FC<LiveMatchesListProps> = ({ selectedLeague }) => 
     );
   }
 
-  const groupedMatches = groupMatchesByLeague(liveMatches);
-
   return (
     <Box>
       {loading && (
@@ -294,33 +215,12 @@ const LiveMatchesList: React.FC<LiveMatchesListProps> = ({ selectedLeague }) => 
         </Box>
       )}
       
-      {groupedMatches.map(({ league, matches }) => (
-        <Accordion 
-          key={league.id}
-          expanded={expandedLeagues[league.id] || false}
-          onChange={() => toggleLeagueExpansion(league.id)}
-          sx={{ mb: 2 }}
-        >
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-              <Avatar src={league.logo} alt={league.name} sx={{ width: 32, height: 32, mr: 2 }} />
-              <Box>
-                <Typography variant="subtitle1">{league.name}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {league.country} • {matches.length} {matches.length === 1 ? 'partida' : 'partidas'} ao vivo
-                </Typography>
-              </Box>
-            </Box>
-          </AccordionSummary>
-          <AccordionDetails>
-            <LiveMatchTable
-              matches={matches}
-              matchEvents={eventsMap}
-              onFetchEvents={fetchEvents}
-            />
-          </AccordionDetails>
-        </Accordion>
-      ))}
+      {/* Tabela única com todas as partidas */}
+      <LiveMatchTable
+        matches={liveMatches}
+        matchEvents={eventsMap}
+        onFetchEvents={fetchEvents}
+      />
     </Box>
   );
 };
