@@ -94,6 +94,7 @@ interface LineupPlayer {
   position: string;
   grid: string | null;
   is_starter: boolean;
+  games_rating?: number | null; // Rating do jogador na partida
 }
 
 interface TeamStatistic {
@@ -186,6 +187,8 @@ export default function FixtureDetails({ fixture, open, selectedLeagueId }: Fixt
   const [substitutions, setSubstitutions] = useState<Substitution[]>([]);
   const [loadingSubstitutions, setLoadingSubstitutions] = useState<boolean>(false);
   const [substitutionsError, setSubstitutionsError] = useState<string | null>(null);
+  const [playerRatings, setPlayerRatings] = useState<{[key: number]: number}>({});
+  const [loadingPlayerRatings, setLoadingPlayerRatings] = useState<boolean>(false);
   
   // Ordenar os jogos por data (do mais recente para o mais antigo)
   const sortedH2hFixtures = [...h2hFixtures].sort((a, b) => 
@@ -469,11 +472,49 @@ export default function FixtureDetails({ fixture, open, selectedLeagueId }: Fixt
       
       setLineups(data.data);
       console.log('Dados de escalações definidos no estado:', data.data);
+      
+      // Buscar ratings dos jogadores após carregar as escalações
+      await fetchPlayerRatings();
     } catch (error) {
       console.error('Erro ao buscar escalações:', error);
       setLineupsError('Não foi possível carregar as escalações das equipes.');
     } finally {
       setLoadingLineups(false);
+    }
+  };
+
+  const fetchPlayerRatings = async () => {
+    if (!fixture) return;
+    
+    setLoadingPlayerRatings(true);
+    
+    try {
+      console.log('Buscando ratings dos jogadores para a partida:', fixture.fixture_id);
+      
+      const response = await fetch(`/api/fixtures/${fixture.fixture_id}/player-ratings`);
+      
+      if (!response.ok) {
+        console.warn('Ratings dos jogadores não disponíveis:', response.status);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log('Dados de ratings dos jogadores recebidos:', data);
+      
+      if (data.success && Array.isArray(data.data)) {
+        const ratingsMap: {[key: number]: number} = {};
+        data.data.forEach((player: {player_id: number, games_rating: number | null}) => {
+          if (player.games_rating !== null) {
+            ratingsMap[player.player_id] = player.games_rating;
+          }
+        });
+        setPlayerRatings(ratingsMap);
+        console.log('Ratings dos jogadores definidos no estado:', ratingsMap);
+      }
+    } catch (error) {
+      console.warn('Erro ao buscar ratings dos jogadores:', error);
+    } finally {
+      setLoadingPlayerRatings(false);
     }
   };
 
@@ -1767,6 +1808,23 @@ export default function FixtureDetails({ fixture, open, selectedLeagueId }: Fixt
                                         <Typography variant="caption" color="primary.dark" sx={{ ml: 0.5, fontSize: '0.7rem', opacity: 0.8 }}>
                                           ({player.position})
                                         </Typography>
+                                        {playerRatings[player.player_id] && (
+                                          <Typography 
+                                            variant="caption" 
+                                            sx={{ 
+                                              ml: 1, 
+                                              px: 0.5, 
+                                              py: 0.2, 
+                                              backgroundColor: 'success.light', 
+                                              color: 'success.dark',
+                                              borderRadius: 0.5,
+                                              fontSize: '0.65rem',
+                                              fontWeight: 'bold'
+                                            }}
+                                          >
+                                            ⭐ {playerRatings[player.player_id].toFixed(1)}
+                                          </Typography>
+                                        )}
                                       </Box>
                                     </Box>
                                   ))}
@@ -1936,6 +1994,23 @@ export default function FixtureDetails({ fixture, open, selectedLeagueId }: Fixt
                                       }
                                     }}>
                                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                        {playerRatings[player.player_id] && (
+                                          <Typography 
+                                            variant="caption" 
+                                            sx={{ 
+                                              mr: 1, 
+                                              px: 0.5, 
+                                              py: 0.2, 
+                                              backgroundColor: 'success.light', 
+                                              color: 'success.dark',
+                                              borderRadius: 0.5,
+                                              fontSize: '0.65rem',
+                                              fontWeight: 'bold'
+                                            }}
+                                          >
+                                            ⭐ {playerRatings[player.player_id].toFixed(1)}
+                                          </Typography>
+                                        )}
                                         <Typography variant="body2" sx={{ fontWeight: 'medium', textAlign: 'right' }}>
                                           {player.player_name}
                                         </Typography>
