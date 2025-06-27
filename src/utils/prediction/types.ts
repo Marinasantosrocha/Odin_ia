@@ -48,6 +48,7 @@ export interface PredictionFactors {
   h2h_advantage: number;
   home_advantage: number;
   goals_expectancy: number;
+  team_statistics_advantage: number; // Novo fator baseado em estatísticas
 }
 
 export interface Prediction {
@@ -76,6 +77,7 @@ export interface PredictionModel {
     h2h_history: number;
     home_advantage: number;
     goals_average: number;
+    team_statistics: number;
   };
   patterns: {
     home_win_rate: number;
@@ -112,4 +114,38 @@ export interface AnalysisProgress {
   predictions_made: number;
   current_accuracy: number;
   progress_percentage: number;
+}
+
+export interface MatchStatistics {
+  fixture_id: number;
+  team_id: number;
+  type: string;
+  value: string;
+}
+
+export interface TeamStats {
+  team_id: number;
+  team_name: string;
+  // Estatísticas ofensivas
+  avg_ball_possession: number;
+  avg_total_shots: number;
+  avg_shots_on_goal: number;
+  avg_shots_accuracy: number; // shots_on_goal / total_shots
+  avg_corner_kicks: number;
+  avg_expected_goals: number;
+  
+  // Estatísticas defensivas
+  avg_goalkeeper_saves: number;
+  avg_blocked_shots: number;
+  avg_fouls_committed: number;
+  avg_cards_received: number; // yellow + red cards
+  
+  // Estatísticas de controle
+  avg_passes_accuracy: number;
+  avg_offsides: number;
+  
+  // Pontuação geral das estatísticas (0 a 1)
+  offensive_rating: number;
+  defensive_rating: number;
+  overall_rating: number;
 }

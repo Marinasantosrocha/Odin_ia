@@ -149,6 +149,12 @@ const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                     '& .MuiLinearProgress-bar': { bgcolor: '#1976d2' }
                   }}
                 />
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {resultData?.precision_by_outcome?.home_win !== undefined ? 
+                    `Baseado em dados reais` : 
+                    'Dados não disponíveis'
+                  }
+                </Typography>
               </Box>
             </Box>
 
@@ -169,6 +175,12 @@ const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                     '& .MuiLinearProgress-bar': { bgcolor: '#ed6c02' }
                   }}
                 />
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {resultData?.precision_by_outcome?.draw !== undefined ? 
+                    `Baseado em dados reais` : 
+                    'Dados não disponíveis'
+                  }
+                </Typography>
               </Box>
             </Box>
 
@@ -189,9 +201,27 @@ const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
                     '& .MuiLinearProgress-bar': { bgcolor: '#d32f2f' }
                   }}
                 />
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {resultData?.precision_by_outcome?.away_win !== undefined ? 
+                    `Baseado em dados reais` : 
+                    'Dados não disponíveis'
+                  }
+                </Typography>
               </Box>
             </Box>
           </Stack>
+          
+          {/* Informação adicional sobre os dados */}
+          {(!resultData?.precision_by_outcome || 
+            (resultData.precision_by_outcome.home_win === 0 && 
+             resultData.precision_by_outcome.draw === 0 && 
+             resultData.precision_by_outcome.away_win === 0)) && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'warning.50', borderRadius: 1 }}>
+              <Typography variant="caption" color="warning.main">
+                ⚠️ Os dados de precisão por tipo de resultado serão calculados após a conclusão das partidas analisadas.
+              </Typography>
+            </Box>
+          )}
         </Box>
 
         {/* Informações do Modelo */}

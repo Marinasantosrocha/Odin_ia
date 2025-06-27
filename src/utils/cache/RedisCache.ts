@@ -152,78 +152,130 @@ class RedisCache {
   async storePrediction(prediction: Prediction): Promise<void> {
     try {
       await this.ensureConnection();
-      if (!this.client) return;
-
-      const key = `prediction:${prediction.fixture_id}`;
-      const ttl = parseInt(process.env.PREDICTION_CACHE_TTL || '3600');
       
-      await this.client.setEx(key, ttl, JSON.stringify(prediction));
+      const key = `prediction:${prediction.fixture_id}`;
+      const value = JSON.stringify(prediction);
+      const ttl = parseInt(process.env.PREDICTION_CACHE_TTL || '3600');
+
+      if (this.useMemoryFallback) {
+        await this.memoryCache.set(key, value, ttl);
+      } else if (this.client) {
+        await this.client.setEx(key, ttl, value);
+      }
     } catch (error) {
-      console.error('Error storing prediction in Redis:', error);
+      console.error('Error storing prediction:', error);
+      // Fallback to memory cache
+      this.useMemoryFallback = true;
+      const key = `prediction:${prediction.fixture_id}`;
+      const value = JSON.stringify(prediction);
+      const ttl = parseInt(process.env.PREDICTION_CACHE_TTL || '3600');
+      await this.memoryCache.set(key, value, ttl);
     }
   }
 
   async getPrediction(fixtureId: number): Promise<Prediction | null> {
     try {
       await this.ensureConnection();
-      if (!this.client) return null;
-
+      
       const key = `prediction:${fixtureId}`;
-      const data = await this.client.get(key);
+      let data: string | null = null;
+
+      if (this.useMemoryFallback) {
+        data = await this.memoryCache.get(key);
+      } else if (this.client) {
+        data = await this.client.get(key);
+      }
       
       return data ? JSON.parse(data) : null;
     } catch (error) {
-      console.error('Error getting prediction from Redis:', error);
-      return null;
+      console.error('Error getting prediction:', error);
+      // Fallback to memory cache
+      this.useMemoryFallback = true;
+      const key = `prediction:${fixtureId}`;
+      const data = await this.memoryCache.get(key);
+      return data ? JSON.parse(data) : null;
     }
   }
 
   async storePredictions(predictions: Prediction[]): Promise<void> {
     try {
       await this.ensureConnection();
-      if (!this.client) return;
-
-      const pipeline = this.client.multi();
+      
       const ttl = parseInt(process.env.PREDICTION_CACHE_TTL || '3600');
       
-      predictions.forEach(prediction => {
-        const key = `prediction:${prediction.fixture_id}`;
-        pipeline.setEx(key, ttl, JSON.stringify(prediction));
-      });
-      
-      await pipeline.exec();
+      if (this.useMemoryFallback) {
+        for (const prediction of predictions) {
+          const key = `prediction:${prediction.fixture_id}`;
+          await this.memoryCache.set(key, JSON.stringify(prediction), ttl);
+        }
+      } else if (this.client) {
+        const pipeline = this.client.multi();
+        
+        predictions.forEach(prediction => {
+          const key = `prediction:${prediction.fixture_id}`;
+          pipeline.setEx(key, ttl, JSON.stringify(prediction));
+        });
+        
+        await pipeline.exec();
+      }
     } catch (error) {
-      console.error('Error storing predictions in Redis:', error);
+      console.error('Error storing predictions:', error);
+      // Fallback to memory cache
+      this.useMemoryFallback = true;
+      const ttl = parseInt(process.env.PREDICTION_CACHE_TTL || '3600');
+      for (const prediction of predictions) {
+        const key = `prediction:${prediction.fixture_id}`;
+        await this.memoryCache.set(key, JSON.stringify(prediction), ttl);
+      }
     }
   }
 
   async getAllPredictions(leagueId: number, seasonYear: number): Promise<Prediction[]> {
     try {
       await this.ensureConnection();
-      if (!this.client) return [];
-
+      
       const pattern = `prediction:*`;
-      const keys = await this.client.keys(pattern);
+      let keys: string[] = [];
+      
+      if (this.useMemoryFallback) {
+        keys = await this.memoryCache.keys(pattern);
+      } else if (this.client) {
+        keys = await this.client.keys(pattern);
+      }
       
       if (keys.length === 0) return [];
       
-      const values = await this.client.mGet(keys);
       const predictions: Prediction[] = [];
       
-      values.forEach(value => {
-        if (value) {
-          try {
-            const prediction = JSON.parse(value);
-            predictions.push(prediction);
-          } catch (error) {
-            console.error('Error parsing prediction:', error);
+      if (this.useMemoryFallback) {
+        for (const key of keys) {
+          const value = await this.memoryCache.get(key);
+          if (value) {
+            try {
+              const prediction = JSON.parse(value);
+              predictions.push(prediction);
+            } catch (error) {
+              console.error('Error parsing prediction:', error);
+            }
           }
         }
-      });
+      } else if (this.client) {
+        const values = await this.client.mGet(keys);
+        values.forEach(value => {
+          if (value) {
+            try {
+              const prediction = JSON.parse(value);
+              predictions.push(prediction);
+            } catch (error) {
+              console.error('Error parsing prediction:', error);
+            }
+          }
+        });
+      }
       
       return predictions;
     } catch (error) {
-      console.error('Error getting all predictions from Redis:', error);
+      console.error('Error getting all predictions:', error);
       return [];
     }
   }
