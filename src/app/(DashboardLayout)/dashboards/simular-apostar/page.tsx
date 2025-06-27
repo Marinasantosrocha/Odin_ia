@@ -24,7 +24,6 @@ import type { SelectChangeEvent } from "@mui/material/Select";
 import PageContainer from "@/app/components/container/PageContainer";
 import Breadcrumb from "@/app/(DashboardLayout)/layout/shared/breadcrumb/Breadcrumb";
 import VirtualWallet from "./components/VirtualWallet";
-import PredictionCard from "@/app/components/prediction/PredictionCard";
 import MetricsDashboard from "@/app/components/prediction/MetricsDashboard";
 import { Prediction, ValidationResult, PredictionModel } from "@/utils/prediction/types";
 import { SportsFootball } from "@mui/icons-material";
@@ -514,33 +513,14 @@ export default function SimularApostarPage() {
                 />
               )}
               
-              {/* Predições */}
+              {/* Mensagem sobre predições */}
               {showPredictions && predictions.length > 0 && (
-                <Box>
-                  <Typography variant="h6" sx={{ mb: 2 }}>
-                    Predições Geradas ({predictions.length} partidas)
+                <Alert severity="success" sx={{ mt: 2 }}>
+                  <Typography variant="body2">
+                    <strong>{predictions.length} predições</strong> foram geradas e estão sendo exibidas na tabela abaixo. 
+                    As apostas recomendadas pela IA são marcadas com ⭐ e destacadas em verde.
                   </Typography>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2 }}>
-                    {predictions.slice(0, 6).map((prediction) => (
-                      <Box key={prediction.fixture_id}>
-                        <PredictionCard 
-                          prediction={prediction}
-                          homeTeamName={fixtures.find(f => f.fixture_id === prediction.fixture_id)?.home_team_name || 'Time Casa'}
-                          awayTeamName={fixtures.find(f => f.fixture_id === prediction.fixture_id)?.away_team_name || 'Time Visitante'}
-                          matchDate={fixtures.find(f => f.fixture_id === prediction.fixture_id)?.date || new Date().toISOString()}
-                          compact={true}
-                        />
-                      </Box>
-                    ))}
-                  </Box>
-                  {predictions.length > 6 && (
-                    <Box sx={{ textAlign: 'center', mt: 2 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        E mais {predictions.length - 6} predições...
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
+                </Alert>
               )}
             </Stack>
           </Paper>
@@ -583,21 +563,61 @@ export default function SimularApostarPage() {
           {/* Tabela de jogos */}
           {fixtures.length > 0 && !loading.fixtures && (
             <Box>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Partidas da Temporada {selectedSeason}
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">
+                  Partidas da Temporada {selectedSeason}
+                </Typography>
+                
+                {/* Resumo das predições */}
+                {predictions.length > 0 && (
+                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                    <Chip
+                      icon={<SportsFootball />}
+                      label={`${predictions.length} predições`}
+                      color="primary"
+                      variant="outlined"
+                      size="small"
+                    />
+                    {validationResult && (
+                      <>
+                        <Chip
+                          label={`${(validationResult.accuracy * 100).toFixed(1)}% precisão`}
+                          color="success"
+                          variant="outlined"
+                          size="small"
+                        />
+                        <Chip
+                          label={`${validationResult.correct_predictions}/${validationResult.total_matches} acertos`}
+                          color="info"
+                          variant="outlined"
+                          size="small"
+                        />
+                      </>
+                    )}
+                  </Box>
+                )}
+              </Box>
               <TableContainer>
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Data</TableCell>
-                      <TableCell>Casa</TableCell>
-                      <TableCell align="center">Casa</TableCell>
-                      <TableCell align="center">Empate</TableCell>
-                      <TableCell align="center">Fora</TableCell>
-                      <TableCell>Fora</TableCell>
-                      <TableCell align="center">Resultado</TableCell>
-                      <TableCell align="center">Predição</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Data</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Time Casa</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 'bold' }}>Casa</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 'bold' }}>Empate</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 'bold' }}>Fora</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Time Visitante</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 'bold' }}>Resultado</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 'bold', minWidth: 140 }}>
+                        <Stack spacing={0.5} alignItems="center">
+                          <Typography variant="body2" fontWeight="bold">
+                            Predição IA
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            (⭐ = Recomendado)
+                          </Typography>
+                        </Stack>
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -638,11 +658,15 @@ export default function SimularApostarPage() {
                               size="small"
                               disabled={!!existingBet}
                               sx={{ 
-                                minWidth: '60px',
+                                minWidth: '70px',
                                 border: prediction?.predicted_result === 'HOME' ? '2px solid' : undefined,
-                                fontWeight: prediction?.predicted_result === 'HOME' ? 'bold' : 'normal'
+                                fontWeight: prediction?.predicted_result === 'HOME' ? 'bold' : 'normal',
+                                backgroundColor: prediction?.predicted_result === 'HOME' && !existingBet ? 'success.50' : undefined,
+                                '&:hover': {
+                                  backgroundColor: prediction?.predicted_result === 'HOME' ? 'success.100' : undefined
+                                }
                               }}
-                              endIcon={prediction?.predicted_result === 'HOME' ? '⭐' : undefined}
+                              startIcon={prediction?.predicted_result === 'HOME' ? '⭐' : undefined}
                               onClick={() => handleBet(fixture, 'home', homeOdd)}
                             >
                               {homeOdd}
@@ -657,11 +681,15 @@ export default function SimularApostarPage() {
                               size="small"
                               disabled={!!existingBet}
                               sx={{ 
-                                minWidth: '60px',
+                                minWidth: '70px',
                                 border: prediction?.predicted_result === 'DRAW' ? '2px solid' : undefined,
-                                fontWeight: prediction?.predicted_result === 'DRAW' ? 'bold' : 'normal'
+                                fontWeight: prediction?.predicted_result === 'DRAW' ? 'bold' : 'normal',
+                                backgroundColor: prediction?.predicted_result === 'DRAW' && !existingBet ? 'success.50' : undefined,
+                                '&:hover': {
+                                  backgroundColor: prediction?.predicted_result === 'DRAW' ? 'success.100' : undefined
+                                }
                               }}
-                              endIcon={prediction?.predicted_result === 'DRAW' ? '⭐' : undefined}
+                              startIcon={prediction?.predicted_result === 'DRAW' ? '⭐' : undefined}
                               onClick={() => handleBet(fixture, 'draw', drawOdd)}
                             >
                               {drawOdd}
@@ -676,11 +704,15 @@ export default function SimularApostarPage() {
                               size="small"
                               disabled={!!existingBet}
                               sx={{ 
-                                minWidth: '60px',
+                                minWidth: '70px',
                                 border: prediction?.predicted_result === 'AWAY' ? '2px solid' : undefined,
-                                fontWeight: prediction?.predicted_result === 'AWAY' ? 'bold' : 'normal'
+                                fontWeight: prediction?.predicted_result === 'AWAY' ? 'bold' : 'normal',
+                                backgroundColor: prediction?.predicted_result === 'AWAY' && !existingBet ? 'success.50' : undefined,
+                                '&:hover': {
+                                  backgroundColor: prediction?.predicted_result === 'AWAY' ? 'success.100' : undefined
+                                }
                               }}
-                              endIcon={prediction?.predicted_result === 'AWAY' ? '⭐' : undefined}
+                              startIcon={prediction?.predicted_result === 'AWAY' ? '⭐' : undefined}
                               onClick={() => handleBet(fixture, 'away', awayOdd)}
                             >
                               {awayOdd}
@@ -712,22 +744,58 @@ export default function SimularApostarPage() {
                           </TableCell>
                           <TableCell align="center">
                             {prediction ? (
-                              <Stack spacing={1} alignItems="center">
-                                <Chip
-                                  label={prediction.predicted_result === 'HOME' ? 'Casa' : 
-                                        prediction.predicted_result === 'AWAY' ? 'Fora' : 'Empate'}
-                                  size="small"
-                                  color="primary"
-                                  variant={prediction.is_correct === true ? "filled" : "outlined"}
-                                />
-                                <Typography variant="caption" color="text.secondary">
-                                  {(prediction.confidence * 100).toFixed(0)}%
+                              <Stack spacing={1} alignItems="center" sx={{ minWidth: 120 }}>
+                                {/* Resultado da predição */}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Chip
+                                    label={prediction.predicted_result === 'HOME' ? 'Casa' : 
+                                          prediction.predicted_result === 'AWAY' ? 'Fora' : 'Empate'}
+                                    size="small"
+                                    color={
+                                      prediction.is_correct === true ? 'success' :
+                                      prediction.is_correct === false ? 'error' :
+                                      'primary'
+                                    }
+                                    variant={prediction.is_correct !== undefined ? "filled" : "outlined"}
+                                    sx={{ 
+                                      fontWeight: 'bold',
+                                      minWidth: 60
+                                    }}
+                                  />
+                                  {/* Ícone de acerto/erro */}
+                                  {prediction.is_correct === true && (
+                                    <Box sx={{ color: 'success.main', fontSize: '16px' }}>✓</Box>
+                                  )}
+                                  {prediction.is_correct === false && (
+                                    <Box sx={{ color: 'error.main', fontSize: '16px' }}>✗</Box>
+                                  )}
+                                </Box>
+                                
+                                {/* Confiança */}
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                                  Confiança: {(prediction.confidence * 100).toFixed(0)}%
                                 </Typography>
+                                
+                                {/* Status adicional */}
+                                {fixture.goals_home !== null && fixture.goals_away !== null && (
+                                  <Typography 
+                                    variant="caption" 
+                                    color={prediction.is_correct === true ? 'success.main' : 
+                                           prediction.is_correct === false ? 'error.main' : 'text.secondary'}
+                                    sx={{ fontWeight: 500 }}
+                                  >
+                                    {prediction.is_correct === true ? 'Acertou!' : 
+                                     prediction.is_correct === false ? 'Errou' : 'Pendente'}
+                                  </Typography>
+                                )}
                               </Stack>
                             ) : (
-                              <Typography variant="caption" color="text.secondary">
-                                -
-                              </Typography>
+                              <Stack spacing={1} alignItems="center">
+                                <Typography variant="caption" color="text.secondary">
+                                  Sem predição
+                                </Typography>
+                                <SportsFootball sx={{ color: 'text.disabled', fontSize: 20 }} />
+                              </Stack>
                             )}
                           </TableCell>
                         </TableRow>
